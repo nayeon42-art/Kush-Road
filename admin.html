@@ -1,0 +1,49 @@
+<!doctype html><html lang="ar" dir="rtl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex"><title>كوش رود | الإدارة</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&display=swap">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+<style>
+:root{--g:#c99a3e;--g2:#e4bc68;--k:#11110f;--i:#1b1a17;--l:#e9e5dc}*{box-sizing:border-box}
+body{margin:0;font-family:Cairo,Arial,sans-serif;background:#f7f4ec;color:var(--i);line-height:1.7}
+header{background:var(--k);color:#fff;display:flex;justify-content:space-between;align-items:center;padding:12px 5%;position:sticky;top:0;z-index:1100;border-bottom:3px solid var(--g)}header b{color:var(--g2);font-size:20px}
+button{font:inherit;cursor:pointer}.b{background:linear-gradient(135deg,#f5d77a,#c99a3e);color:var(--i);border:0;border-radius:99px;padding:9px 20px;font-weight:700}.b.o{background:#fff;border:1px solid var(--i)}.b.s{padding:3px 14px;font-size:14px}
+main{max-width:1000px;margin:auto;padding:12px 5% 60px}
+.c{background:#fff;border:1px solid var(--l);border-radius:20px;padding:16px;margin-top:14px;box-shadow:0 10px 30px #0000000d}.c h2{margin:0 0 8px}
+input{width:100%;padding:11px;border:1px solid #bdb8ab;border-radius:12px;font:inherit;margin-top:6px}
+.g{display:grid;gap:12px;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));margin-top:14px}.g .c{margin:0;text-align:center}.g b{font-size:28px}
+.tabs{display:flex;gap:8px;margin-top:14px;flex-wrap:wrap}#map{height:420px;border-radius:18px}
+.t{position:fixed;bottom:20px;inset-inline:0;margin:auto;width:max-content;max-width:90%;background:var(--k);color:#fff;padding:10px 18px;border-radius:99px;z-index:2000}
+.p{display:inline-block;background:#f5ecd6;border-radius:99px;padding:0 10px;font-size:13px}.n{color:#77736b;margin:0}.on{background:#d9f5e3}
+</style></head><body><header><b>كوش رود · لوحة الإدارة</b><button class="b s o" id="lo" hidden>خروج</button></header><main id="v"></main><div class="t" id="toast" hidden></div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script type="module">
+import{initializeApp}from'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js';
+import{getAuth,onAuthStateChanged,signInWithEmailAndPassword,signOut}from'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
+import{getFirestore,collection,doc,updateDoc,getDoc,query,where,onSnapshot,getCountFromServer}from'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
+const app=initializeApp({apiKey:"AIzaSyBg9Rgjs7GMTQcWXkpwLTbNbzmNuVsv3so",authDomain:"kush-road1.firebaseapp.com",projectId:"kush-road1",storageBucket:"kush-road1.firebasestorage.app",messagingSenderId:"344953341160",appId:"1:344953341160:web:6f2ac1f351b52a73a3f55d"});
+const auth=getAuth(app),db=getFirestore(app),$=s=>document.querySelector(s),e=s=>String(s??'').replace(/[&<>"']/g,c=>'&#'+c.charCodeAt(0)+';');
+const T=m=>{const t=$('#toast');t.textContent=m;t.hidden=false;clearTimeout(T.i);T.i=setTimeout(()=>t.hidden=true,3000)};
+const ERR={'auth/invalid-credential':'بيانات الدخول غير صحيحة','auth/invalid-email':'البريد الإلكتروني غير صحيح','permission-denied':'ما عندك صلاحية لهذا الإجراء'};
+const fail=x=>T(ERR[x.code]||'حدث خطأ: '+(x.code||x.message));
+const em=v=>v.includes('@')?v:v.replace(/\D/g,'')+'@kushroad.app';
+let map=null,mk={},clean=[],tab='rq',PH={};
+const on=(q,f)=>clean.push(onSnapshot(q,f)),live=d=>d.online&&d.lat&&Date.now()-(d.ts||0)<18e4;
+const phone=async id=>{if(PH[id]===undefined){try{PH[id]=(await getDoc(doc(db,'users',id))).data()?.phone||'—'}catch(_){PH[id]='—'}}return PH[id]};
+const act=async(c,i,st)=>{try{await updateDoc(doc(db,c,i),{status:st});if(c!='listings')await updateDoc(doc(db,'users',i),{status:st}).catch(()=>0);T('تم')}catch(x){fail(x)}};
+const wire=el=>el.querySelectorAll('[data-c]').forEach(b=>b.onclick=()=>act(b.dataset.c,b.dataset.i,b.dataset.s));
+const L={drivers:'السائقون والسائقات',offices:'مكاتب التأجير',listings:'إعلانات البيع'};
+const login=()=>{$('#v').innerHTML='<div class="c" style="max-width:420px;margin:40px auto"><h2>دخول الإدارة</h2><p class="n">هذه البوابة لمديرة الموقع فقط.</p><input id="a1" placeholder="البريد الإلكتروني"><input id="a2" type="password" placeholder="كلمة المرور"><button class="b" id="go" style="margin-top:12px;width:100%">دخول</button></div>';$('#go').onclick=async()=>{try{await signInWithEmailAndPassword(auth,em($('#a1').value.trim()),$('#a2').value)}catch(x){fail(x)}}};
+const info=(c,x)=>c=='drivers'?`${x.woman?'♀ سائقة':'سائق حر'} · ${e(x.vehicle||'بدون مركبة')}`:c=='offices'?e(x.city||'مكتب تأجير'):`${e(x.type)} · ${e(x.year)} · ${(+x.price).toLocaleString('en')} SDG`;
+const dash=()=>{clean.forEach(f=>f());clean=[];if(map){map.remove();map=null}mk={};
+ $('#v').innerHTML=`<div class="g" id="st"></div><div class="tabs">${[['rq','طلبات الانضمام'],['mb','الأعضاء'],['mp','الخريطة الحية']].map(([k,t])=>`<button class="b s${tab==k?'':' o'}" data-t="${k}">${t}</button>`).join('')}</div><div id="tb"></div>`;
+ $('#v').querySelectorAll('[data-t]').forEach(b=>b.onclick=()=>{tab=b.dataset.t;dash()});
+ Promise.all(['users','drivers','offices','rides','bookings'].map(c=>getCountFromServer(collection(db,c)))).then(r=>{$('#st').innerHTML=['مستخدم','سائق','مكتب','مشوار','حجز'].map((t,i)=>`<div class="c"><b>${r[i].data().count}</b><br>${t}</div>`).join('')}).catch(fail);
+ if(tab=='rq'){$('#tb').innerHTML=Object.keys(L).map(c=>`<div class="c"><h2>${L[c]} (بانتظار الموافقة)</h2><div id="r-${c}"></div></div>`).join('');
+  for(const c of Object.keys(L))on(query(collection(db,c),where('status','==','pending')),async s=>{const h=await Promise.all(s.docs.map(async d=>{const x=d.data(),ph=await phone(c=='listings'?x.uid:d.id);return `<div class="c" style="margin-bottom:10px"><b>${e(x.name)}</b> <span class="p">${info(c,x)}</span><br>📞 <span dir="ltr">${e(ph)}</span><br><button class="b s" data-c="${c}" data-i="${d.id}" data-s="${c=='listings'?'live':'active'}">قبول</button> <button class="b s o" data-c="${c}" data-i="${d.id}" data-s="declined">رفض</button></div>`}));$('#r-'+c).innerHTML=h.join('')||'<p class="n">لا توجد طلبات</p>';wire($('#r-'+c))})}
+ if(tab=='mb'){$('#tb').innerHTML=['drivers','offices'].map(c=>`<div class="c"><h2>${L[c]}</h2><div id="r-${c}"></div></div>`).join('');
+  for(const c of['drivers','offices'])on(query(collection(db,c),where('status','in',['active','suspended'])),async s=>{const h=await Promise.all(s.docs.map(async d=>{const x=d.data(),ph=await phone(d.id),a=x.status=='active';return `<div class="c" style="margin-bottom:10px"><b>${e(x.name)}</b> <span class="p">${info(c,x)}</span> ${live(x)?'<span class="p on">متصل الآن</span>':''}${a?'':'<span class="p">موقوف</span>'}<br>📞 <span dir="ltr">${e(ph)}</span><br><button class="b s${a?' o':''}" data-c="${c}" data-i="${d.id}" data-s="${a?'suspended':'active'}">${a?'إيقاف الحساب':'إعادة التفعيل'}</button></div>`}));$('#r-'+c).innerHTML=h.join('')||'<p class="n">لا يوجد أعضاء</p>';wire($('#r-'+c))})}
+ if(tab=='mp'){$('#tb').innerHTML='<div class="c"><h2>السائقون المتصلون الآن</h2><div id="map"></div></div>';map=L.map('map').setView([15.5,32.56],11);L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png',{attribution:'© OpenStreetMap'}).addTo(map);
+  on(query(collection(db,'drivers'),where('status','==','active')),s=>{const l=s.docs.map(d=>({id:d.id,...d.data()})).filter(live);l.forEach(d=>{const ll=[d.lat,d.lng];if(mk[d.id])mk[d.id].setLatLng(ll);else mk[d.id]=L.circleMarker(ll,{radius:9,color:'#000',weight:2,fillColor:d.woman?'#e0679a':'#e4bc68',fillOpacity:1}).addTo(map).bindPopup(e(d.name))});Object.keys(mk).forEach(k=>{if(!l.some(d=>d.id==k)){mk[k].remove();delete mk[k]}})})}};
+$('#lo').onclick=()=>signOut(auth);
+let un;onAuthStateChanged(auth,u=>{un?.();$('#lo').hidden=!u;if(!u)return login();
+ un=onSnapshot(doc(db,'users',u.uid),s=>{const d=s.data();if(d?.role=='ss'&&d.status=='active')dash();else if(s.exists())$('#v').innerHTML='<div class="c" style="max-width:460px;margin:40px auto"><h2>غير مصرّح</h2><p>هذا الحساب ليس حساب إدارة. سجّل الخروج وادخل بحساب الإدارة.</p></div>'})});
+</script></body></html>
